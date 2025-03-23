@@ -19,7 +19,20 @@ diigo.py - a utility for backing up Diigo bookmarks.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import urllib2 # For interacting with the Diigo servers
+# Backup Diigo bookmarks to a JSON file.
+# Source https://github.com/cconrad/diigo-backup
+
+# Usage:
+# python diigo-backup.py -v 0 -u USERNAME -a API_KEY -p PASSWORD > diigo-backup.json
+# -h, --help show this help message and exit
+# -u USER, --user=USER The user with which to connect
+# -p PASSW, --pass=PASSW The given user's password
+# -a APIKEY, --apikey=APIKEY API key (see https://www.diigo.com/api_keys/new/)
+# -v 0-9, --verbosity=0-9 Amount of output to show on screen
+
+
+import urllib.request # For interacting with the Diigo servers
+import urllib.error
 import time # For waiting between queries
 import sys # For the logging methods.
 from optparse import OptionParser # For parsing commandline options.
@@ -54,9 +67,9 @@ def getUserBookmarks(username, apikey):
         # Get the bookmarks in json format from the Diigo api
         Log("Getting 100 bookmarks starting from position "
         + str(start), DEBUG)
-        bookmarks = urllib2.urlopen(BOOKMARKS_URL + '?user=' + username
+        bookmarks = urllib.request.urlopen(BOOKMARKS_URL + '?user=' + username
             +'&start=' + str(start) + '&key=' + apikey + '&filter=all&count=100')
-        response = bookmarks.read()
+        response = bookmarks.read().decode('utf-8')
         Log("Response: \n" + response, FULL)
 
         # Wait a little to not choke the api servers, then get the next 100
@@ -88,33 +101,33 @@ def main():
         DEBUG)
     try:
         bookmarks = getUserBookmarks(options.username, options.apikey)
-    except urllib2.HTTPError, inst:
+    except urllib.error.HTTPError as inst:
         bookmarks = None
-        FatalError("Error: " + str(inst) + "\n" + inst.read())
+        FatalError("Error: " + str(inst) + "\n" + inst.read().decode('utf-8'))
 
     Log("Bookmarks retrieved:\n" + str(bookmarks), FULL)
     Log("Retrieved " + str(len(bookmarks)) + " bookmarks.", INFO)
 
-    print bookmarks
+    print(bookmarks)
 
 
 def basicAuthSetup(user, password, naked_url):
     """
-    Sets up urllib2 to automatically use basic authentication
+    Sets up urllib to automatically use basic authentication
     in the supplied url (which is supplied w/o the protocol)
     using the supplied username and password
     """
-    passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
+    passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
 
     # This will use the supplied user/password for all
     # child urls of naked_url because of the 'None' param.
     passman.add_password(None, naked_url, user, password)
 
     # This creates and assigns a custom authentication handler
-    # for urllib2, which will be used when we call urlopen.
-    authhandler = urllib2.HTTPBasicAuthHandler(passman)
-    opener = urllib2.build_opener(authhandler)
-    urllib2.install_opener(opener)
+    # for urllib, which will be used when we call urlopen.
+    authhandler = urllib.request.HTTPBasicAuthHandler(passman)
+    opener = urllib.request.build_opener(authhandler)
+    urllib.request.install_opener(opener)
 
 
 def commandlineOptions():
